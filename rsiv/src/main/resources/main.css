@@ -1,0 +1,46 @@
+
+.root{
+    -fx-accent: #1a6ee4;
+    -fx-focus-color: -fx-accent;
+    -fx-base: #111;
+    -fx-control-inner-background: derive(-fx-base,50%);
+    -fx-control-inner-background-alt: derive(-fx-control-inner-background, 30%);
+}
+
+.header {
+    -fx-font-size: 2em;
+    -fx-padding: 8 0 4 0;
+
+}
+
+.item {
+    -fx-font-size: 1.2em;
+    -fx-padding: 0 0 0 0;
+}
+
+
+.value {
+    -fx-font-size: 1.5em;
+    -fx-padding: 0 0 0 0;
+}
+
+.chart{
+    -fx-padding: 16 0 16 0;
+}
+
+.patch{
+    -fx-fill:rgba(20, 20, 20, 0.5);
+}
+
+.patch-selected {
+    -fx-fill: rgba(58, 226, 50, 0.76);
+}
+
+.divider *.line{
+    -fx-background-color: white;
+    -fx-border-style: solid;
+    -fx-border-width: 1px;
+}
+
+
+
