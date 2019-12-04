@@ -9,7 +9,15 @@ import scala.collection.immutable.{SortedMap, TreeMap}
 
 
 case class Model(series: SortedMap[Instant, (Arm[Double], Arm[Double])] = TreeMap())
-case class Arm[A](elbow: A, extensor: A, ligament: A)
+case class Arm[A](elbow: A, extensor: A, ligament: A) {
+	def -(that: Arm[A])(implicit ev: Numeric[A]): Arm[A] = {
+		import ev._
+		Arm(
+			elbow = elbow - that.elbow,
+			extensor = extensor - that.extensor,
+			ligament = ligament - that.ligament)
+	}
+}
 object Arm {
 
 	val InjuryThresholdDegree: Double = 30d
@@ -22,7 +30,7 @@ case class FlexResult(name: String, degree: Double, resistance: Double)
 object FlexResult {
 	def apply(line: String): Either[String, FlexResult] =
 		line.trim.split(" ").toList match {
-			case name :: degree ::  Nil =>
+			case name :: degree :: Nil =>
 				(for {
 					d <- degree.trim.toDoubleOption
 					//						r <- resistance.trim.toDoubleOption
@@ -30,6 +38,6 @@ object FlexResult {
 					case None    => Left(s"No decode $line")
 					case Some(x) => Right(x)
 				}
-			case bad                                 => Left(s"No parse $line => $bad")
+			case bad                   => Left(s"No parse $line => $bad")
 		}
 }

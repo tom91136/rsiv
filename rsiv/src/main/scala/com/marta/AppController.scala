@@ -14,7 +14,7 @@ import scalafx.beans.property.ObjectProperty
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.Node
 import scalafx.scene.chart.{AreaChart, XYChart}
-import scalafx.scene.control.{CheckBox, Label}
+import scalafx.scene.control.{Button, CheckBox, Label}
 import scalafx.scene.layout.{HBox, Pane, Priority, StackPane}
 import scalafx.scene.paint.Color
 import scalafx.scene.shape._
@@ -37,7 +37,8 @@ import scala.collection.immutable.SortedMap
 						   relLabel: Label, relPercent: Label,
 						   chart: AreaChart[String, Number],
 						   sensors: CheckBox, sensorPane: Pane, sensorContainer: HBox,
-						   history: AreaChart[String, Number]) {
+						   history: AreaChart[String, Number],
+						   calibrate: Button) {
 
 
 	private val rexB = new BendView("rex", 100)
@@ -46,6 +47,9 @@ import scala.collection.immutable.SortedMap
 	private val rexS = new XYChart.Series[String, Number]
 	private val rclS = new XYChart.Series[String, Number]
 	private val relS = new XYChart.Series[String, Number]
+
+	private val calibration = ObjectProperty[Option[(Arm[Double], Arm[Double])]](None)
+	private val model       = ObjectProperty(Model())
 
 
 	sensorContainer.children = Seq(rexB.root, rclB.root, relB.root)
@@ -56,6 +60,11 @@ import scala.collection.immutable.SortedMap
 
 	history.data = Seq(rexS.delegate, rclS.delegate, relS.delegate)
 
+	calibrate.onAction = handle {
+		calibration.value = model.value.series.lastOption.map(_._2)
+		println(s"Cal data = ${calibration.value}")
+	}
+
 
 	//	def mkData = {
 	//		val series = List.tabulate(1000)(i => Instant.now().plusSeconds(i)).map { t =>
@@ -65,7 +74,6 @@ import scala.collection.immutable.SortedMap
 	//		Model(series)
 	//	}
 
-	private val model = ObjectProperty(Model())
 
 	private val binds = lel -> lelLabel :: lcl -> lclLabel :: lex -> lexLabel ::
 						rel -> relLabel :: rcl -> rclLabel :: rex -> rexLabel ::
@@ -89,9 +97,18 @@ import scala.collection.immutable.SortedMap
 			.withZone(ZoneId.systemDefault());
 
 
-	private def update(m: Model): Unit = {
+	private def update(model: Model): Unit = {
 
-		val grouped = m.series.groupBy(x => formatter.format(x._1)).map { case (k, xs) =>
+
+		val calibrated = model.series.view.mapValues { case x@(l, r) =>
+			calibration.value match {
+				case Some((cl, cr)) => (cl - l, cr - r)
+				case None           => x
+			}
+		}.to(SortedMap)
+
+
+		val grouped = calibrated.groupBy(x => formatter.format(x._1)).map { case (k, xs) =>
 			val ys           = xs.values.to(List)
 			val N            = ys.length
 			val (lSum, rSum) = ys.combineAll
@@ -117,11 +134,12 @@ import scala.collection.immutable.SortedMap
 
 
 		val xs = grouped.map { case (t, (l, r)) =>
-			XYChart.Data[String, Number](t, r.elbow)
+			XYChart.Data[String, Number](t, (r.elbow + r.extensor + r.ligament) / 3)
 		}.toSeq
+
 		chart.data = Seq(XYChart.Series[String, Number](ObservableBuffer.from(xs)))
 
-		val (lArm, rArm) = m.series.lastOption.map(_._2).getOrElse(Monoid[Arm[Double]].empty -> Monoid[Arm[Double]].empty)
+		val (lArm, rArm) = calibrated.lastOption.map(_._2).getOrElse(Monoid[Arm[Double]].empty -> Monoid[Arm[Double]].empty)
 		rexB.update(0, rArm.extensor)
 		relB.update(0, rArm.elbow)
 		rclB.update(0, rArm.ligament)
